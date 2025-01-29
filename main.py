@@ -37,11 +37,12 @@ app = FastAPI()
 # Add CORSMiddleware to the FastAPI app
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://amosnudel.github.io/renderFront/"],  # List of origins that are allowed to access the resources
+    allow_origins=["https://amosnudel.github.io"],  # This allows requests from this origin
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all methods (GET, POST, etc.)
+    allow_methods=["*"],  # Allow all HTTP methods (GET, POST, etc.)
     allow_headers=["*"],  # Allow all headers
 )
+
 
 # Dependency to get the DB session
 def get_db():
