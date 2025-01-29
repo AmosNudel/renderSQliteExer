@@ -7,6 +7,7 @@ from sqlalchemy.orm import sessionmaker, Session
 from pydantic import BaseModel
 from typing import List  # Import List for response
 import shutil
+from fastapi.middleware.cors import CORSMiddleware  # Import CORSMiddleware
 
 # Ensure the 'uploads' directory exists
 if not os.path.exists("uploads"):
@@ -42,6 +43,15 @@ Base.metadata.create_all(bind=engine)
 
 # FastAPI app setup
 app = FastAPI()
+
+# Enable CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://amosnudel.github.io"],  # Allows all origins; you can restrict this to specific URLs (e.g., ["https://example.com"])
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods like GET, POST, etc.
+    allow_headers=["*"],  # Allows all headers
+)
 
 # Mount StaticFiles to serve images from the 'uploads' directory
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
