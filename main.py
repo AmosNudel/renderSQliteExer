@@ -64,6 +64,10 @@ def get_db():
 # Add this to serve static files from the 'uploads' directory
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
+# Ensure the 'uploads' directory exists
+if not os.path.exists("uploads"):
+    os.makedirs("uploads")
+
 # Routes
 @app.post("/items/", response_model=ItemCreate)
 def create_item(item: ItemCreate, db: Session = Depends(get_db)):
