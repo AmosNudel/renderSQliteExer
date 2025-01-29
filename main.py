@@ -5,9 +5,9 @@ from sqlalchemy import create_engine, Column, Integer, String, Sequence
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from pydantic import BaseModel
-from typing import List  # Import List for response
+from typing import List
 import shutil
-from fastapi.middleware.cors import CORSMiddleware  # Import CORSMiddleware
+from fastapi.middleware.cors import CORSMiddleware
 
 # Ensure the 'uploads' directory exists
 if not os.path.exists("uploads"):
@@ -28,6 +28,13 @@ class Item(Base):
     name = Column(String, index=True)
     description = Column(String)
 
+# ORM model for Images
+class ImageModel(Base):
+    __tablename__ = "images"
+    id = Column(Integer, Sequence('image_id_seq'), primary_key=True, index=True)
+    filename = Column(String, index=True)
+    file_path = Column(String)
+
 # Pydantic model for Item Create Request
 class ItemCreate(BaseModel):
     name: str
@@ -47,10 +54,10 @@ app = FastAPI()
 # Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://frontserver.netlify.app"],  # Allows all origins; you can restrict this to specific URLs (e.g., ["https://example.com"])
+    allow_origins=["https://frontserver.netlify.app"],  # Change as per your frontend URL
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods like GET, POST, etc.
-    allow_headers=["*"],  # Allows all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Mount StaticFiles to serve images from the 'uploads' directory
@@ -88,17 +95,22 @@ def get_items(db: Session = Depends(get_db)):
 
 # Endpoint for uploading an image
 @app.post("/upload_image/")
-async def upload_image(file: UploadFile = File(...)):
+async def upload_image(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    # Ensure file is uploaded to the 'uploads' folder
     file_location = f"uploads/{file.filename}"
     with open(file_location, "wb") as f:
         shutil.copyfileobj(file.file, f)
-    return {"info": f"file '{file.filename}' saved at '{file_location}'"}
+
+    # Store image info in the database
+    db_image = ImageModel(filename=file.filename, file_path=file_location)
+    db.add(db_image)
+    db.commit()
+    db.refresh(db_image)
+    
+    return {"info": f"file '{file.filename}' saved at '{file_location}'", "id": db_image.id}
 
 # Endpoint to get a list of images
 @app.get("/images/", response_model=List[Image])
-def get_images():
-    image_files = []
-    for filename in os.listdir("uploads"):
-        if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp')):
-            image_files.append({"id": len(image_files) + 1, "file_path": f"uploads/{filename}"})
-    return image_files
+def get_images(db: Session = Depends(get_db)):
+    db_images = db.query(ImageModel).all()
+    return [{"id": image.id, "file_path": image.file_path} for image in db_images]
