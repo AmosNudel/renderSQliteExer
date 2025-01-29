@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware  # Import CORSMiddleware
 from sqlalchemy import create_engine, Column, Integer, String, Sequence
 from sqlalchemy.ext.declarative import declarative_base
@@ -21,6 +21,12 @@ class Item(Base):
     name = Column(String, index=True)
     description = Column(String)
 
+# New ORM model for Image
+class Image(Base):
+    __tablename__ = "images"
+    id = Column(Integer, Sequence('image_id_seq'), primary_key=True, index=True)
+    file_path = Column(String, index=True)
+
 # Pydantic model for request validation
 class ItemCreate(BaseModel):
     name: str
@@ -28,6 +34,7 @@ class ItemCreate(BaseModel):
 
 # Create the tables in the database
 Base.metadata.create_all(bind=engine)
+
 
 # FastAPI app setup
 app = FastAPI()
@@ -72,3 +79,25 @@ def get_item(item_id: int, db: Session = Depends(get_db)):
 def get_items(db: Session = Depends(get_db)):
     db_items = db.query(Item).all()
     return db_items
+
+# Route to upload image
+@app.post("/upload_image/")
+async def upload_image(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    # Save the image to a folder (e.g., 'uploads')
+    upload_path = f"uploads/{file.filename}"
+    with open(upload_path, "wb") as buffer:
+        buffer.write(file.file.read())
+
+    # Save the image path to the database
+    db_image = Image(file_path=upload_path)
+    db.add(db_image)
+    db.commit()
+    db.refresh(db_image)
+
+    return {"filename": file.filename, "file_path": upload_path}
+
+# Route to get all images
+@app.get("/images/", response_model=List[Image])
+def get_images(db: Session = Depends(get_db)):
+    db_images = db.query(Image).all()
+    return db_images
