@@ -6,6 +6,7 @@ from sqlalchemy.orm import sessionmaker, Session
 from pydantic import BaseModel
 from typing import List
 import os
+from fastapi.staticfiles import StaticFiles
 
 # Database setup
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
@@ -59,6 +60,9 @@ def get_db():
         yield db
     finally:
         db.close()
+
+# Add this to serve static files from the 'uploads' directory
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # Routes
 @app.post("/items/", response_model=ItemCreate)
